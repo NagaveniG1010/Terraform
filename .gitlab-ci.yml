@@ -1,0 +1,42 @@
+# .gitlab-ci.yml
+# Example of how we can create scripted CI/CD pipelines for deploying infrastructure to AWS using Terraform with GitLab CI/CD
+
+#This GitLab CI/CD configuration defines three stages:
+#
+# lint: Checks Terraform code formatting (terraform fmt), validates the Terraform configuration (terraform validate), and performs static analysis (tflint).
+# plan: Initializes Terraform (terraform init) and generates an execution plan (terraform plan) to preview changes.
+# apply: Applies the Terraform changes (terraform apply) using the plan generated in the previous stage. This stage is triggered only for changes pushed to the master branch.
+
+stages:
+  - lint
+  - plan
+  - apply
+
+variables:
+  TF_CLI_ARGS: "-input=false"
+
+before_script:
+  - apt-get update && apt-get install -y unzip
+  - curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+  - apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  - apt-get update && apt-get install -y terraform
+
+lint:
+  stage: lint
+  script:
+    - terraform fmt -check=true -diff=true
+    - terraform validate
+    - tflint
+
+plan:
+  stage: plan
+  script:
+    - terraform init
+    - terraform plan -out=tfplan
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -auto-approve tfplan
+  only:
+    - master
